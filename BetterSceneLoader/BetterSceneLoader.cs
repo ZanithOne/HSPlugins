@@ -9,6 +9,11 @@ using IllusionPlugin;
 using System.IO;
 using System.Collections;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Xml;
+using Config;
+using Harmony;
+using Studio;
 
 // imitate windows explorer thumbnail spacing and positioning for scene loader
 // reset hsstudioaddon lighting on load if no xml data
@@ -21,6 +26,9 @@ namespace BetterSceneLoader
     {
         static string scenePath = Environment.CurrentDirectory + "/UserData/studioneo/BetterSceneLoader/";
         static string orderPath = scenePath + "order.txt";
+        static bool bslSaving = false;
+        const int screenshotWidth = 1280;
+        const int screenshotHeight = 720;
 
         float buttonSize = 10f;
         float marginSize = 5f;
@@ -42,6 +50,11 @@ namespace BetterSceneLoader
         Button yesbutton;
         Button nobutton;
         Text nametext;
+        static Camera tagCamera;
+        Canvas tagCanvas;
+        InputField tagInputField;
+        Text tagText;
+        static Material overlayMat;
 
         int columnCount;
         bool useExternalSavedata;
@@ -55,6 +68,11 @@ namespace BetterSceneLoader
 
         void Awake()
         {
+            HSExtSave.HSExtSave.RegisterHandler("betterSceneLoader", null, null, HSExtSaveSceneLoad, null, HSExtSaveSceneSave, null, null);
+
+            HarmonyInstance harmony = HarmonyInstance.Create("betterSceneLoader");
+            harmony.Patch(AccessTools.Method(typeof(SceneInfo), "CreatePngScreen"), new HarmonyMethod(typeof(BetterSceneLoader), nameof(SceneInfoCreatePngScreenPrefix)));
+
             UIUtility.Init();
             MakeBetterSceneLoader();
             LoadSettings();
@@ -110,7 +128,7 @@ namespace BetterSceneLoader
                     mainPanel.transform.SetRect(0f, 0f, 1f, 1f, windowMargin, windowMargin, -windowMargin, -windowMargin); 
             }
         }
-        
+
         void MakeBetterSceneLoader()
         {
             UISystem = UIUtility.CreateNewUISystem("BetterSceneLoaderCanvas");
@@ -135,7 +153,7 @@ namespace BetterSceneLoader
             close.transform.SetRect(1f, 0f, 1f, 1f, -buttonSize * 2f);
             close.onClick.AddListener(() => UISystem.gameObject.SetActive(false));
             Utils.AddCloseSymbol(close);
-            
+
             category = UIUtility.CreateDropdown("Dropdown", drag.transform, "Categories");
             category.transform.SetRect(0f, 0f, 0f, 1f, 0f, 0f, 100f);
             category.captionText.transform.SetRect(0f, 0f, 1f, 1f, 0f, 2f, -15f, -2f);
@@ -160,8 +178,12 @@ namespace BetterSceneLoader
             folder.transform.SetRect(0f, 0f, 0f, 1f, 260f, 0f, 340f);
             folder.onClick.AddListener(() => Process.Start(scenePath));
 
+            tagInputField = UIUtility.CreateInputField("TagFiels", drag.transform, "Tag...");
+            tagInputField.transform.SetRect(0f, 0f, 0f, 1f, 340f, 0f, 500f);
+            tagInputField.onEndEdit.AddListener((s) => SetTag(tagInputField.text.Trim()));
+
             var loadingPanel = UIUtility.CreatePanel("LoadingIconPanel", drag.transform);
-            loadingPanel.transform.SetRect(0f, 0f, 0f, 1f, 340f, 0f, 340f + headerSize);
+            loadingPanel.transform.SetRect(0f, 0f, 0f, 1f, 500f, 0f, 500f + headerSize);
             loadingPanel.color = new Color(0f, 0f, 0f, 0f);
             var loadingIcon = UIUtility.CreatePanel("LoadingIcon", loadingPanel.transform);
             loadingIcon.transform.SetRect(0.1f, 0.1f, 0.9f, 0.9f);
@@ -205,6 +227,40 @@ namespace BetterSceneLoader
             deletebutton.onClick.AddListener(() => confirmpanel.gameObject.SetActive(true));
 
             PopulateGrid();
+
+            tagCamera = new GameObject("TagCamera").AddComponent<Camera>();
+            tagCamera.transform.SetParent(transform);
+            tagCamera.cullingMask = LayerMask.GetMask("UI");
+            tagCamera.clearFlags = CameraClearFlags.SolidColor;
+            tagCamera.backgroundColor = new Color(0f, 0f, 0f, 0f);
+            tagCamera.depth = 80;
+            tagCamera.enabled = false;
+
+            tagCanvas = UIUtility.CreateNewUISystem("TagOverlayCanvas");
+            Destroy(tagCanvas.GetComponent<GraphicRaycaster>());
+            tagCanvas.gameObject.layer = 5;
+            tagCanvas.GetComponent<CanvasScaler>().referenceResolution = new Vector2(1920f, 1080f);
+            tagCanvas.gameObject.SetActive(false);
+            tagCanvas.gameObject.transform.SetParent(transform);
+            tagCanvas.renderMode = RenderMode.ScreenSpaceCamera;
+            tagCanvas.worldCamera = tagCamera;
+            tagCanvas.planeDistance = 100;
+            tagText = UIUtility.CreateText("TagText", tagCanvas.transform, "");
+            tagText.gameObject.layer = 5;
+            //tagText.transform.SetRect(0f,0f,1f,1f,60f, 40f, -60f, -40f);
+            tagText.transform.SetRect();
+            tagText.resizeTextForBestFit = false;
+            tagText.alignByGeometry = true;
+            tagText.fontSize = 192;
+            tagText.color = Color.white;
+            Outline outline = tagText.gameObject.AddComponent<Outline>();
+            outline.effectColor = Color.black;
+            outline.effectDistance = new Vector2(8, 8);
+            Outline outline2 = tagText.gameObject.AddComponent<Outline>();
+            outline2.effectColor = Color.black;
+            outline2.effectDistance = new Vector2(16, 16);
+
+            overlayMat = new Material(AssetBundle.LoadFromMemory(Properties.Resources.OverlayShader).LoadAsset<Shader>("OverlayTextures"));
         }
 
         List<Dropdown.OptionData> GetCategories()
@@ -229,9 +285,17 @@ namespace BetterSceneLoader
                 order = new string[0];
                 File.Create(orderPath);
             }
-            
+
             var sorted = folders.Select(x => Path.GetFileName(x)).OrderBy(x => order.Contains(x) ? Array.IndexOf(order, x) : order.Length);
             return sorted.Select(x => new Dropdown.OptionData(x)).ToList();
+        }
+
+        private void SetTag(string t)
+        {
+            tagCanvas.gameObject.SetActive(true);
+            tagText.text = t;
+            tagInputField.text = t;
+            tagCanvas.gameObject.SetActive(false);
         }
 
         void LoadScene(string path)
@@ -256,7 +320,10 @@ namespace BetterSceneLoader
             Studio.Studio.Instance.dicObjectCtrl.Values.ToList().ForEach(x => x.OnSavePreprocessing());
             Studio.Studio.Instance.sceneInfo.cameraSaveData = Studio.Studio.Instance.cameraCtrl.Export();
             string path = GetCategoryFolder() + DateTime.Now.ToString("yyyy_MMdd_HHmm_ss_fff") + ".png";
+            tagCanvas.gameObject.SetActive(true);
+            bslSaving = true;
             Studio.Studio.Instance.sceneInfo.Save(path);
+            bslSaving = false;
             if(useExternalSavedata)
             {
                 Utils.InvokePluginMethod("HSStudioNEOExtSave.StudioNEOExtendSaveMgr", "SaveExtData", path);
@@ -265,6 +332,44 @@ namespace BetterSceneLoader
 
             var button = CreateSceneButton(imagelist.content.GetComponentInChildren<Image>().transform, PngAssist.LoadTexture(path), path);
             button.transform.SetAsFirstSibling();
+        }
+
+        private static bool SceneInfoCreatePngScreenPrefix(GameScreenShotAssist ___gameScreenShotAssist, ref byte[] __result)
+        {
+            if(!bslSaving)
+                return true;
+            tagCamera.transform.position = Camera.main.transform.position;
+            tagCamera.transform.rotation = Camera.main.transform.rotation;
+            tagCamera.fieldOfView = Camera.main.fieldOfView;
+            tagCamera.farClipPlane = Camera.main.farClipPlane;
+            tagCamera.nearClipPlane = Camera.main.nearClipPlane;
+            tagCamera.rect = Camera.main.rect;
+
+            int antiAliasing = QualitySettings.antiAliasing != 0 ? QualitySettings.antiAliasing : 1;
+
+            RenderTexture temporary = RenderTexture.GetTemporary(screenshotWidth, screenshotHeight, 24, RenderTextureFormat.Default, RenderTextureReadWrite.Default, antiAliasing);
+            tagCamera.targetTexture = temporary;
+            tagCamera.Render();
+            tagCamera.targetTexture = null;
+
+            overlayMat.SetTexture("_Overlay", temporary);
+            overlayMat.SetTextureOffset("_Overlay", Vector2.zero);
+            overlayMat.SetTextureScale("_Overlay", Vector2.one);
+            overlayMat.SetTexture("_AlphaMask", temporary);
+
+            Graphics.Blit(___gameScreenShotAssist.rtCamera, temporary, overlayMat, 0);
+
+            RenderTexture cachedActive = RenderTexture.active;
+            RenderTexture.active = temporary;
+
+            Texture2D texture2D = new Texture2D(screenshotWidth, screenshotHeight, TextureFormat.RGB24, false);
+            texture2D.ReadPixels(new Rect(0.0f, 0.0f, screenshotWidth, screenshotHeight), 0, 0);
+            texture2D.Apply();
+
+            RenderTexture.active = cachedActive;
+            RenderTexture.ReleaseTemporary(temporary);
+            __result = texture2D.EncodeToPNG();
+            return false;
         }
 
         void DeleteScene(string path)
@@ -280,6 +385,16 @@ namespace BetterSceneLoader
             Studio.Studio.Instance.ImportScene(path);
             confirmpanel.gameObject.SetActive(false);
             optionspanel.gameObject.SetActive(false);
+        }
+
+        private void HSExtSaveSceneLoad(string path, XmlNode node)
+        {
+            this.SetTag(node != null && node.Attributes != null && node.Attributes["tag"] != null ? node.Attributes["tag"].Value.Trim() : "");
+        }
+
+        private void HSExtSaveSceneSave(string path, XmlTextWriter writer)
+        {
+            writer.WriteAttributeString("tag", this.tagInputField.text.Trim());
         }
 
         void ReloadImages()
@@ -365,7 +480,7 @@ namespace BetterSceneLoader
 
                 confirmpanel.gameObject.SetActive(false);
             });
-            
+
             var sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
             button.gameObject.GetComponent<Image>().sprite = sprite;
 

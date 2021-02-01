@@ -20,7 +20,7 @@
     <DebugSymbols>false</DebugSymbols>
     <DebugType>none</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\..\..\PluginsDEV\</OutputPath>
+    <OutputPath>E:\HoneySelect\Plugins\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -28,7 +28,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
+    <OutputPath>E:\HoneySelect\Plugins\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -37,28 +37,37 @@
     <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
   </PropertyGroup>
   <ItemGroup>
+	<Reference Include="System" />
+    <Reference Include="System.Xml" />
+    <Reference Include="0Harmony">
+      <HintPath>E:\HSPlugins_Joan\Other Dependencies\0Harmony.dll</HintPath>
+    </Reference>
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\DLL\Assembly-CSharp.dll</HintPath>
+      <HintPath>E:\HoneySelect\StudioNEO_64_Data\Managed\Assembly-CSharp.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="IllusionInjector">
-      <HintPath>..\..\..\StudioNEO_64_Data\Managed\IllusionInjector.dll</HintPath>
+      <HintPath>E:\HoneySelect\StudioNEO_64_Data\Managed\IllusionInjector.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="IllusionPlugin">
-      <HintPath>..\..\..\StudioNEO_64_Data\Managed\IllusionPlugin.dll</HintPath>
+      <HintPath>E:\HoneySelect\StudioNEO_64_Data\Managed\IllusionPlugin.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="UIUtility">
-      <HintPath>..\..\DLL\UIUtility.dll</HintPath>
+      <HintPath>E:\HoneySelect\Clean dlls\UIUtility.dll</HintPath>
+    </Reference>
+	<Reference Include="HSExtSave">
+      <HintPath>E:\HoneySelect\Plugins\HSExtSave.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>..\..\DLL\UnityEngine.dll</HintPath>
+      <HintPath>E:\HoneySelect\Clean dlls\UnityEngine.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.UI">
-      <HintPath>..\..\DLL\UnityEngine.UI.dll</HintPath>
+      <HintPath>E:\HoneySelect\Clean dlls\UnityEngine.UI.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
@@ -79,6 +88,7 @@
     <None Include="ILMerge.props" />
     <None Include="packages.config" />
     <None Include="Resources\loadicon" />
+	<None Include="Resources\OverlayShader.unity3d" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="ILMergeOrder.txt" />

@@ -69,5 +69,17 @@ namespace BetterSceneLoader.Properties {
                 return ((byte[])(obj));
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] OverlayShader
+        {
+            get
+            {
+                object obj = ResourceManager.GetObject("OverlayShader", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
     }
 }
