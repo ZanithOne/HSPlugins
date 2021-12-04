@@ -54,6 +54,7 @@ namespace BetterSceneLoader
         Canvas tagCanvas;
         InputField tagInputField;
         Text tagText;
+        static Text timeText;
         static Material overlayMat;
 
         int columnCount;
@@ -260,6 +261,22 @@ namespace BetterSceneLoader
             outline2.effectColor = Color.black;
             outline2.effectDistance = new Vector2(16, -16);
 
+            timeText = UIUtility.CreateText("TimeText", tagCanvas.transform, "");
+            timeText.gameObject.layer = 5;
+            timeText.transform.SetRect(0f, 0f, 1f, 1f, 60f, 40f, -60f, -40f);
+            timeText.resizeTextForBestFit = false;
+            timeText.alignment = TextAnchor.LowerRight;
+            timeText.alignByGeometry = true;
+            timeText.fontSize = 192;
+            timeText.color = Color.white;
+            timeText.raycastTarget = false;
+            Outline timeOutline = timeText.gameObject.AddComponent<Outline>();
+            timeOutline.effectColor = Color.black;
+            timeOutline.effectDistance = new Vector2(8, -8);
+            Outline timeOutline2 = timeText.gameObject.AddComponent<Outline>();
+            timeOutline2.effectColor = Color.black;
+            timeOutline2.effectDistance = new Vector2(16, -16);
+
             overlayMat = new Material(AssetBundle.LoadFromMemory(Properties.Resources.OverlayShader).LoadAsset<Shader>("OverlayTextures"));
             StartCoroutine(EnableCanvasDelayed());
         }
@@ -346,6 +363,8 @@ namespace BetterSceneLoader
                 return true;
 
             int antiAliasing = QualitySettings.antiAliasing != 0 ? QualitySettings.antiAliasing : 1;
+
+            timeText.text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
             RenderTexture rtLabel = RenderTexture.GetTemporary(Screen.width, Screen.height, 24, RenderTextureFormat.Default, RenderTextureReadWrite.Default, antiAliasing);
             tagCamera.targetTexture = rtLabel;
